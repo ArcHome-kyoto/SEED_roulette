@@ -397,15 +397,7 @@
   }
 
   // BGMボタン
-  function toggleBgm() {
-    bgmEnabled = !bgmEnabled;
-    bgmBtn.textContent = bgmEnabled ? "♪ BGM：ON" : "♪ BGM：OFF";
 
-    if (!running && bgmAudio) {
-      bgmAudio.pause();
-      bgmAudio.currentTime = 0;
-    }
-  }
 
   // ▼ 配列をランダムに並び替える（Fisher-Yates Shuffle）
   function shuffleArray(arr) {
@@ -427,4 +419,5 @@
 
 </body>
 </html>
+
 
