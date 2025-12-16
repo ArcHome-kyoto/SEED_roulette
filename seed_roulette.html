@@ -1,423 +1,132 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<title>SEED 抽選ルーレット</title>
-<style>
-  body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    text-align: center;
-    padding: 20px;
-    background: #f5f5f5;
-  }
-  h1 {
-    margin-bottom: 10px;
-  }
-  #roulette {
-    font-size: 48px;
-    font-weight: bold;
-    margin: 40px auto 10px;
-    padding: 30px;
-    width: 80%;
-    max-width: 600px;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    min-height: 80px;
-  }
-  #winner {
-    font-size: 32px;
-    font-weight: bold;
-    margin-top: 20px;
-    min-height: 40px;
-  }
-  .buttons {
-    margin: 16px 0;
-  }
-  button {
-    font-size: 18px;
-    padding: 10px 24px;
-    margin: 4px 6px;
-    border-radius: 999px;
-    border: none;
-    cursor: pointer;
-  }
-  #startBtn {
-    background: #2e7d32;
-    color: white;
-  }
-  #stopBtn {
-    background: #c62828;
-    color: white;
-  }
-  #resetBtn {
-    background: #455a64;
-    color: white;
-  }
-  #bgmBtn {
-    background: #f9a825;
-    color: #222;
-  }
-  #members {
-    text-align: left;
-    margin: 20px auto;
-    max-width: 680px;
-    background: white;
-    padding: 16px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    max-height: 280px;
-    overflow-y: auto;
-    font-size: 14px;
-  }
-  #members h2 {
-    font-size: 16px;
-    margin-top: 0;
-  }
-  .member-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-  .member-row input[type="text"] {
-    flex: 1;
-    min-width: 0;
-    font-size: 13px;
-    padding: 2px 4px;
-  }
-  .member-row label {
-    white-space: nowrap;
-    font-size: 12px;
-  }
-  .member-row button.remove {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #eeeeee;
-  }
-  #addMemberBtn {
-    font-size: 13px;
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: none;
-    background: #1976d2;
-    color: white;
-    cursor: pointer;
-    margin-top: 6px;
-  }
-  small {
-    color: #555;
-  }
+function renderPrizeList(){
+  prizeListEl.innerHTML = "";
 
-  /* 🎊紙吹雪風クラッカー */
-  #confetti-container {
-    position: fixed;
-    pointer-events: none;
-    inset: 0;
-    overflow: hidden;
-    z-index: 999;
-  }
-  .confetti-piece {
-    position: absolute;
-    top: -10vh;
-    opacity: 0.9;
-    animation-name: confetti-fall;
-    animation-timing-function: linear;
-  }
-  @keyframes confetti-fall {
-    0% {
-      transform: translate3d(0, 0, 0) rotateZ(0deg);
-      opacity: 1;
-    }
-    100% {
-      transform: translate3d(20px, 110vh, 0) rotateZ(720deg);
-      opacity: 0;
-    }
-  }
-</style>
-</head>
-<body>
+  prizes.forEach((p, idx) => {
+    const row = document.createElement("div");
+    row.className = "prize-row";
 
-<h1>🎯 SEED 抽選ルーレット 🎯</h1>
-<div id="roulette">スタンバイ中</div>
+    // カード（ここをクリックしてCtrl+Vできるようにする）
+    const card = document.createElement("div");
+    card.className = "prize-card";
+    card.tabIndex = 0; // focus可能にして貼り付けを受ける
 
-<div class="buttons">
-  <button id="startBtn">▶ スタート</button>
-  <button id="stopBtn">⏹ ストップ</button>
-  <button id="resetBtn">🔁 リセット</button>
-</div>
+    const img = document.createElement("img");
+    img.className = "prize-img";
+    img.alt = p.name || "prize";
+    img.src = p.imgDataUrl || "";
 
-<div id="winner"></div>
+    const info = document.createElement("div");
+    info.style.flex = "1";
 
-<div id="members">
-  <h2>メンバー一覧（除外＆追加可能）</h2>
-  <small>
-    ※ 名前は自由に書き換えOK。チェックを入れた人は抽選から外れます。<br>
-    ※「＋メンバー追加」で人数を増やせます。
-  </small>
-  <div id="memberList"></div>
-  <button id="addMemberBtn">＋ メンバー追加</button>
-</div>
+    const title = document.createElement("div");
+    title.className = "prize-title";
+    title.textContent = p.name || `景品${idx+1}`;
 
-<div id="confetti-container"></div>
+    const nameInput = document.createElement("input");
+    nameInput.className = "prize-input";
+    nameInput.type = "text";
+    nameInput.value = p.name;
+    nameInput.placeholder = "景品名（例：A賞：Amazonギフト）";
 
-<script>
-  // ▼ 初期メンバー23人（必要に応じて書き換えOK）
-  let baseMembers = [
-    "井上", "石川", "上平", "内海", "勝田", "門野",
-    "許", "小池", "近藤", "斉尾", "砂原", "大黒",
-    "竹治", "中川", "西尾", "竹内", "服部", "樋富",
-    "藤野", "淵本", "宮地", "山下", "吉田"
-  ];
+    // コントロール
+    const controls = document.createElement("div");
+    controls.className = "prize-controls";
 
-  // 除外フラグ（trueなら除外）
-  let excludedFlags = baseMembers.map(() => false);
+    const fileInput = document.createElement("input");
+    fileInput.className = "prize-file";
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
 
-  const rouletteEl = document.getElementById("roulette");
-  const winnerEl = document.getElementById("winner");
-  const memberListEl = document.getElementById("memberList");
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const resetBtn = document.getElementById("resetBtn");
-  const addMemberBtn = document.getElementById("addMemberBtn");
-  const bgmBtn = document.getElementById("bgmBtn");
-  const confettiContainer = document.getElementById("confetti-container");
-  const bgmAudio = document.getElementById("bgm");
-  const fanfareAudio = document.getElementById("fanfare");
+    const clearImgBtn = document.createElement("button");
+    clearImgBtn.className = "prize-clearimg";
+    clearImgBtn.type = "button";
+    clearImgBtn.textContent = "画像クリア";
 
-  let activeMembers = [];
-  let currentIndex = 0;
-  let running = false;
-  let stopping = false;
-  let speed = 60; // 切り替え速度(ms)
-  let timerId = null;
-  let bgmEnabled = false;
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "prize-remove";
+    removeBtn.type = "button";
+    removeBtn.textContent = "景品削除";
 
-  function renderMemberList() {
-    memberListEl.innerHTML = "";
-    baseMembers.forEach((name, idx) => {
-      const row = document.createElement("div");
-      row.className = "member-row";
-
-      const text = document.createElement("input");
-      text.type = "text";
-      text.value = name;
-      text.dataset.index = idx;
-
-      const label = document.createElement("label");
-      const check = document.createElement("input");
-      check.type = "checkbox";
-      check.dataset.index = idx;
-      check.checked = excludedFlags[idx] || false;
-      label.appendChild(check);
-      label.appendChild(document.createTextNode(" 除外"));
-
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "削除";
-      removeBtn.className = "remove";
-      removeBtn.dataset.index = idx;
-
-      // 名前変更
-      text.addEventListener("input", (e) => {
-        const i = Number(e.target.dataset.index);
-        baseMembers[i] = e.target.value || `No.${i+1}`;
-      });
-
-      // 除外ON/OFF
-      check.addEventListener("change", (e) => {
-        const i = Number(e.target.dataset.index);
-        excludedFlags[i] = e.target.checked;
-      });
-
-      // メンバー削除
-      removeBtn.addEventListener("click", (e) => {
-        const i = Number(e.target.dataset.index);
-        baseMembers.splice(i, 1);
-        excludedFlags.splice(i, 1);
-        renderMemberList();
-      });
-
-      row.appendChild(text);
-      row.appendChild(label);
-      row.appendChild(removeBtn);
-      memberListEl.appendChild(row);
+    // --- イベント ---
+    nameInput.addEventListener("input", (e)=>{
+      prizes[idx].name = e.target.value;
+      title.textContent = e.target.value || `景品${idx+1}`;
     });
-  }
 
-  renderMemberList();
+    // PCから画像選択 → DataURL化して保存＆表示
+    fileInput.addEventListener("change", async (e)=>{
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return;
 
-  function addMember() {
-    baseMembers.push(`新メンバー${baseMembers.length + 1}`);
-    excludedFlags.push(false);
-    renderMemberList();
-  }
+      const dataUrl = await fileToDataUrl(file);
+      prizes[idx].imgDataUrl = dataUrl;
+      img.src = dataUrl;
 
-  function updateActiveMembers() {
-    activeMembers = [];
-    baseMembers.forEach((name, idx) => {
-      if (!excludedFlags[idx] && name.trim() !== "") {
-        activeMembers.push(name.trim());
+      // 同じファイルを再度選べるようにリセット
+      fileInput.value = "";
+    });
+
+    // 画像クリア
+    clearImgBtn.addEventListener("click", ()=>{
+      prizes[idx].imgDataUrl = "";
+      img.src = "";
+    });
+
+    // 景品削除
+    removeBtn.addEventListener("click", ()=>{
+      prizes.splice(idx, 1);
+      renderPrizeList();
+    });
+
+    // Ctrl+V / ⌘+V で画像貼り付け（カードがフォーカスされている時）
+    card.addEventListener("paste", async (e)=>{
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+
+      for (const it of items) {
+        if (it.type && it.type.startsWith("image/")) {
+          const file = it.getAsFile();
+          if (!file) continue;
+          const dataUrl = await fileToDataUrl(file);
+          prizes[idx].imgDataUrl = dataUrl;
+          img.src = dataUrl;
+          e.preventDefault();
+          break;
+        }
       }
     });
-  }
 
-  function tickRoulette() {
-    if (!running || activeMembers.length === 0) return;
+    info.appendChild(title);
+    info.appendChild(nameInput);
 
-    currentIndex = (currentIndex + 1) % activeMembers.length;
-    rouletteEl.textContent = activeMembers[currentIndex];
+    controls.appendChild(fileInput);
+    controls.appendChild(clearImgBtn);
+    controls.appendChild(removeBtn);
 
-    if (stopping) {
-      speed += 25; // 減速量
-      if (speed >= 420) { // 一定以上遅くなったら停止
-        stopFinal();
-        return;
-      }
-    }
+    card.appendChild(img);
+    card.appendChild(info);
+    card.appendChild(controls);
 
-    timerId = setTimeout(tickRoulette, speed);
-  }
+    row.appendChild(card);
+    prizeListEl.appendChild(row);
+  });
+}
 
-  function startRoulette() {
-    if (running) return;
+function addPrize(){
+  prizes.push({ name: `新景品${prizes.length + 1}`, imgDataUrl: "" });
+  renderPrizeList();
+}
 
-    updateActiveMembers();
+function fileToDataUrl(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-    if (activeMembers.length === 0) {
-      alert("抽選対象が0人です。メンバーと除外チェックを確認してください。");
-      return;
-    }
+addPrizeBtn.addEventListener("click", addPrize);
+renderPrizeList();
 
-    // ▼ スタートごとにルーレット順をランダム化
-    activeMembers = shuffleArray(activeMembers);
-
-    running = true;
-    stopping = false;
-    speed = 60;
-    winnerEl.textContent = "";
-    clearConfetti();
-
-    currentIndex = Math.floor(Math.random() * activeMembers.length);
-    rouletteEl.textContent = activeMembers[currentIndex];
-
-    // BGM開始
-    if (bgmEnabled && bgmAudio) {
-      bgmAudio.volume = 0.5;
-      bgmAudio.play().catch(() => {});
-    }
-
-    tickRoulette();
-  }
-
-  function requestStop() {
-    if (!running) return;
-    stopping = true;
-  }
-
-  function stopFinal() {
-    running = false;
-    stopping = false;
-    clearTimeout(timerId);
-    timerId = null;
-
-    const finalName = activeMembers[currentIndex];
-    rouletteEl.textContent = finalName;
-    winnerEl.textContent = `当選：${finalName} さん 🎉`;
-
-    // BGM停止＆ファンファーレ
-    if (bgmAudio) {
-      bgmAudio.pause();
-      bgmAudio.currentTime = 0;
-    }
-    if (fanfareAudio) {
-      fanfareAudio.currentTime = 0;
-      fanfareAudio.play().catch(() => {});
-    }
-
-    fireConfetti();
-  }
-
-  function resetRoulette() {
-    running = false;
-    stopping = false;
-    clearTimeout(timerId);
-    timerId = null;
-    rouletteEl.textContent = "スタンバイ中";
-    winnerEl.textContent = "";
-    clearConfetti();
-
-    if (bgmAudio) {
-      bgmAudio.pause();
-      bgmAudio.currentTime = 0;
-    }
-  }
-
-  // 🎊紙吹雪演出
-  function fireConfetti() {
-    clearConfetti();
-    const colors = ["#ff5252", "#ffb300", "#4caf50", "#42a5f5", "#ab47bc", "#ffeb3b"];
-    const count = 150;
-
-    for (let i = 0; i < count; i++) {
-      const piece = document.createElement("div");
-      piece.className = "confetti-piece";
-
-      const size = 6 + Math.random() * 8; // 6〜14px
-      piece.style.width = size + "px";
-      piece.style.height = (size * (0.5 + Math.random())) + "px";
-      piece.style.left = Math.random() * 100 + "vw";
-
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      piece.style.backgroundColor = color;
-
-      const duration = 2 + Math.random() * 2; // 2〜4秒
-      const delay = Math.random() * 0.5;
-      piece.style.animationDuration = duration + "s";
-      piece.style.animationDelay = delay + "s";
-
-      piece.style.transform = `translate3d(0,0,0) rotateZ(${Math.random()*360}deg)`;
-
-      confettiContainer.appendChild(piece);
-
-      setTimeout(() => {
-        piece.remove();
-      }, (duration + delay) * 1000);
-    }
-  }
-
-  function clearConfetti() {
-    confettiContainer.innerHTML = "";
-  }
-
-  // BGMボタン
-  function toggleBgm() {
-    bgmEnabled = !bgmEnabled;
-    bgmBtn.textContent = bgmEnabled ? "♪ BGM：ON" : "♪ BGM：OFF";
-
-    if (!running && bgmAudio) {
-      bgmAudio.pause();
-      bgmAudio.currentTime = 0;
-    }
-  }
-
-  // ▼ 配列をランダムに並び替える（Fisher-Yates Shuffle）
-  function shuffleArray(arr) {
-    const newArr = [...arr];
-    for (let i = newArr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-    }
-    return newArr;
-  }
-
-  // イベント
-  startBtn.addEventListener("click", startRoulette);
-  stopBtn.addEventListener("click", requestStop);
-  resetBtn.addEventListener("click", resetRoulette);
-  addMemberBtn.addEventListener("click", addMember);
-  bgmBtn.addEventListener("click", toggleBgm);
-</script>
-
-</body>
-</html>
