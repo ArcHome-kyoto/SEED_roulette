@@ -1,393 +1,204 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<title>SEED 抽選ルーレット</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<style>
-body{
-  margin:0;
-  background:#f4f4f8;
-  font-family:"Segoe UI",sans-serif;
-  display:flex;
-  height:100vh;
-  overflow:hidden;
-}
-#left{
-  flex:2;
-  padding:20px;
-  overflow-y:auto;
-}
-#right{
-  width:320px;
-  background:#fff;
-  border-left:1px solid #ddd;
-  padding:20px;
-  overflow-y:auto;
-}
-h1{
-  font-size:28px;
-  font-weight:800;
-  margin-bottom:6px;
-}
-#roulette{
-  width:280px;
-  height:280px;
-  border-radius:50%;
-  margin:0 auto 20px;
-  background:#fff;
-  border:10px solid #ddd;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:34px;
-  font-weight:900;
-  position:relative;
-}
-#controls{
-  text-align:center;
-  margin-bottom:20px;
-}
-button{
-  background:#7b1fa2;
-  color:#fff;
-  border:none;
-  padding:10px 20px;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:16px;
-  margin:5px;
-}
-button:disabled{
-  opacity:0.4;
-}
-#members,#prizes{
-  background:white;
-  padding:16px;
-  margin-top:20px;
-  border-radius:12px;
-}
-.member-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin:6px 0;
-}
-.member-input{
-  flex:1;
-  padding:6px 8px;
-  border-radius:6px;
-  border:1px solid #ddd;
-}
-.weight-input{
-  width:60px;
-  padding:6px;
-  border:1px solid #ddd;
-  border-radius:6px;
-}
-.remove-btn{
-  background:#ececec;
-  color:#333;
-  font-size:12px;
-}
-.confetti{
-  position:fixed;
-  top:-10px;
-  width:8px;
-  height:14px;
-  opacity:0.9;
-  animation:fall 2.5s linear forwards;
-}
-@keyframes fall{
-  to{ transform:translateY(110vh) rotateZ(360deg); }
-}
-#resultList{
-  font-size:16px;
-  line-height:1.8;
-}
-.result-item{
-  font-weight:700;
-  margin-bottom:4px;
-}
-.success-msg{
-  background:#ffeef4;
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:10px;
-  color:#d81b60;
-  font-weight:700;
-  text-align:center;
-}
-</style>
-</head>
-<body>
-
-<div id="left">
-  <h1>SEED 抽選ルーレット</h1>
-
-  <div id="roulette">待機中</div>
-
-  <div id="controls">
-    当選人数：
-    <input id="winCountInput" type="number" value="3" min="1" style="width:80px;padding:6px;border-radius:6px;border:1px solid #ddd;">
-    <br>
-    <button id="startButton">抽選開始</button>
-    <button id="stopButton" disabled>ストップ</button>
-    <button id="resetButton">リセット</button>
-  </div>
-
-  <!-- メンバー編集 -->
-  <div id="members">
-    <h2>メンバー一覧</h2>
-    <div id="memberList"></div>
-    <button id="addMemberBtn">＋ メンバー追加</button>
-  </div>
-
-</div>
-
-<!-- 右側：当選者一覧 -->
-<div id="right">
-  <h2>当選者一覧</h2>
-  <div id="resultList"></div>
-</div>
-
 <script>
-/* ★★★★★ データ構造 ★★★★★ */
-let baseMembers = [
-  { name:"石川", weight:1 },
-  { name:"井上", weight:1 },
-  { name:"上平", weight:1 },
-  { name:"内海", weight:1 },
-  { name:"勝田", weight:1 },
-  { name:"門野", weight:1 },
-  { name:"許", weight:1 },
-  { name:"小池", weight:1 },
-  { name:"近藤", weight:1 },
-  { name:"斉尾", weight:1 },
-  { name:"砂原", weight:1 },
-  { name:"大黒", weight:1 },
-  { name:"竹内", weight:1 },
-  { name:"竹治", weight:1 },
-  { name:"寺本", weight:1 },
-  { name:"中川", weight:1 },
-  { name:"西尾", weight:1 },
-  { name:"服部", weight:1 },
-  { name:"樋富", weight:1 },
-  { name:"平澤", weight:1 },
-  { name:"藤野", weight:1 },
-  { name:"淵本", weight:1 },
-  { name:"Yuuki", weight:1 },
-  { name:"山下", weight:1 },
-  { name:"吉田", weight:1 },
-];
-let excludedFlags = baseMembers.map(()=>false);
-let activeMembers = [];
+// -----------------------------
+//  紙吹雪エフェクト
+// -----------------------------
+function createConfetti() {
+    const confettiContainer = document.createElement('div');
+    confettiContainer.style.position = "fixed";
+    confettiContainer.style.top = "0";
+    confettiContainer.style.left = "0";
+    confettiContainer.style.width = "100%";
+    confettiContainer.style.height = "100%";
+    confettiContainer.style.pointerEvents = "none";
+    confettiContainer.style.overflow = "hidden";
+    document.body.appendChild(confettiContainer);
 
-let isRunning = false;
-let currentIndex = 0;
-let intervalId = null;
-let speed = 50;
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement("div");
+        confetti.style.position = "absolute";
+        confetti.style.width = "8px";
+        confetti.style.height = "8px";
+        confetti.style.backgroundColor = randomColor();
+        confetti.style.top = "-10px";
+        confetti.style.left = Math.random() * 100 + "%";
+        confetti.style.opacity = Math.random() + "";
+        confetti.style.transform = "rotate(" + Math.random() * 360 + "deg)";
+        confettiContainer.appendChild(confetti);
 
-let totalWinners = 0;
-let winnerList = [];
+        const fallDuration = 2000 + Math.random() * 3000;
+        const horizontalMove = (Math.random() - 0.5) * 200;
 
-/* DOM */
-const rouletteEl = document.getElementById("roulette");
-const startBtn = document.getElementById("startButton");
-const stopBtn = document.getElementById("stopButton");
-const resetBtn = document.getElementById("resetButton");
-const winCountInput = document.getElementById("winCountInput");
-const resultListEl = document.getElementById("resultList");
-const memberListEl = document.getElementById("memberList");
-const addMemberBtn = document.getElementById("addMemberBtn");
-
-/* ★★★★★ メンバー表示 ★★★★★ */
-function renderMemberList(){
-  memberListEl.innerHTML = "";
-  baseMembers.forEach((m,idx)=>{
-    const row=document.createElement("div");
-    row.className="member-row";
-
-    const input=document.createElement("input");
-    input.className="member-input";
-    input.value=m.name;
-    input.dataset.index=idx;
-
-    const weight=document.createElement("input");
-    weight.className="weight-input";
-    weight.type="number";
-    weight.step="0.1";
-    weight.min="0";
-    weight.value=m.weight;
-
-    const chk=document.createElement("input");
-    chk.type="checkbox";
-    chk.checked=excludedFlags[idx];
-
-    const del=document.createElement("button");
-    del.className="remove-btn";
-    del.textContent="削除";
-
-    input.addEventListener("input",(e)=>{
-      baseMembers[idx].name = e.target.value;
-    });
-    weight.addEventListener("input",(e)=>{
-      const v = Number(e.target.value);
-      baseMembers[idx].weight = (isFinite(v) && v>=0)? v:1;
-    });
-    chk.addEventListener("change",(e)=>{
-      excludedFlags[idx]=e.target.checked;
-    });
-    del.addEventListener("click",()=>{
-      baseMembers.splice(idx,1);
-      excludedFlags.splice(idx,1);
-      renderMemberList();
-    });
-
-    row.appendChild(input);
-    row.appendChild(weight);
-    row.appendChild(chk);
-    row.appendChild(del);
-    memberListEl.appendChild(row);
-  });
-}
-renderMemberList();
-
-addMemberBtn.addEventListener("click",()=>{
-  baseMembers.push({name:`新規${baseMembers.length+1}`, weight:1});
-  excludedFlags.push(false);
-  renderMemberList();
-});
-
-/* ★★★★★ アクティブメンバー更新 ★★★★★ */
-function updateActiveMembers(){
-  activeMembers=[];
-  baseMembers.forEach((m,idx)=>{
-    if(!excludedFlags[idx] && m.name.trim()!=="" && m.weight>0){
-      activeMembers.push({name:m.name, weight:m.weight});
+        confetti.animate([
+            { transform: "translate(0, 0) rotate(0deg)" },
+            { transform: `translate(${horizontalMove}px, 100vh) rotate(720deg)` }
+        ], {
+            duration: fallDuration,
+            easing: "ease-out",
+            iterations: 1
+        });
     }
-  });
+
+    setTimeout(() => confettiContainer.remove(), 5000);
 }
 
-/* シャッフル */
-function shuffleArray(arr){
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
-  }
+function randomColor() {
+    const colors = ["#FF5733", "#FFC300", "#DAF7A6", "#33FFBD", "#3380FF", "#BD33FF"];
+    return colors[Math.floor(Math.random() * colors.length)];
 }
 
-/* 重み抽選 */
-function weightedPick(items){
-  let total=0;
-  for(const it of items) total += it.weight;
-  let r = Math.random()*total;
-  for(const it of items){
-    r -= it.weight;
-    if(r <= 0) return it;
-  }
-  return items[items.length-1];
+// -----------------------------
+//  BGM
+// -----------------------------
+let bgmStart = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-game-level-start-2050.mp3");
+let bgmWin   = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3");
+
+// -----------------------------
+//  ルーレット回転
+// -----------------------------
+let currentIndex = 0;
+let rouletteTimer = null;
+
+function startRoulette() {
+    if (members.length === 0) return;
+
+    if (!rouletteTimer) {
+        rouletteTimer = setInterval(() => {
+            currentIndex = (currentIndex + 1) % members.length;
+            drawRoulette();
+        }, 80);
+    }
 }
 
-/* ★★★★★ 抽選 ★★★★★ */
-function startRoulette(){
-  isRunning=true;
-  stopBtn.disabled=false;
-  startBtn.disabled=true;
-
-  updateActiveMembers();
-  shuffleArray(activeMembers);
-  if(activeMembers.length===0){
-    alert("抽選対象がいません。");
-    startBtn.disabled=false;
-    stopBtn.disabled=true;
-    return;
-  }
-  currentIndex=0;
-  speed=50;
-
-  intervalId=setInterval(tickRoulette, speed);
+function stopRoulette() {
+    clearInterval(rouletteTimer);
+    rouletteTimer = null;
 }
 
-function tickRoulette(){
-  currentIndex=(currentIndex+1)%activeMembers.length;
-  rouletteEl.textContent=activeMembers[currentIndex].name;
-}
+// -----------------------------
+//  ルーレット開始ボタン
+// -----------------------------
+let targetWinnersCount = 1;
+let finishedWinners = 0;
+let drawing = false;
 
-function stopRoulette(){
-  clearInterval(intervalId);
-  isRunning=false;
-  stopBtn.disabled=true;
+document.getElementById("start").onclick = () => {
+    if (drawing) return; // 多重実行防止
+    targetWinnersCount = parseInt(document.getElementById("winnersCount").value);
 
-  let picked = weightedPick(activeMembers);
-  rouletteEl.textContent=picked.name;
+    if (targetWinnersCount <= 0) {
+        alert("当選人数を正しく入力してください");
+        return;
+    }
 
-  // 紙吹雪
-  fireConfetti();
+    finishedWinners = 0;
+    winners = [];
+    drawWinnersList();
+    runNextDraw();
+};
 
-  // 当選者保存
-  winnerList.push(picked.name);
-  updateResultList();
+// -----------------------------
+//  自動で次を実行（方式：②A）
+// -----------------------------
+function runNextDraw() {
+    if (members.length === 0) {
+        alert("メンバーが全員当選しました！");
+        drawing = false;
+        return;
+    }
 
-  // その人を除外
-  const idx = baseMembers.findIndex(m=>m.name===picked.name);
-  if(idx>=0){
-    excludedFlags[idx]=true;
-  }
+    if (finishedWinners >= targetWinnersCount) {
+        drawing = false;
+        return;
+    }
 
-  const winGoal = Number(winCountInput.value);
-  if(winnerList.length>=winGoal){
-    rouletteEl.textContent = "抽選終了！";
-    startBtn.disabled=false;
-    return;
-  }
-
-  // 1秒後に次の抽選スタート
-  setTimeout(()=>{
+    drawing = true;
+    bgmStart.play();
     startRoulette();
-  },1000);
+
+    // ランダムな時間で徐々に停止
+    const spinTime = 1500 + Math.random() * 2000;
+    setTimeout(() => {
+        stopRoulette();
+
+        // 当選者を決定（ルーレット位置にいる人）
+        const winner = members[currentIndex];
+        winners.push(winner);
+        finishedWinners++;
+
+        showWinnerPopup(winner);
+
+        // メンバーから除外（重複なし）
+        members.splice(currentIndex, 1);
+
+        drawMembersList();
+        drawRoulette();
+        drawWinnersList();
+
+        bgmWin.play();
+        createConfetti();
+
+        // 1秒後に次の抽選へ（②A）
+        setTimeout(() => {
+            runNextDraw();
+        }, 1000);
+
+    }, spinTime);
 }
 
-function updateResultList(){
-  resultListEl.innerHTML="";
-  winnerList.forEach((w,i)=>{
-    const div=document.createElement("div");
-    div.className="result-item";
-    div.textContent=`${i+1}位：${w}`;
-    resultListEl.appendChild(div);
-  });
+// -----------------------------
+//  当選者ポップアップ（①B）
+// -----------------------------
+function showWinnerPopup(name) {
+    const popup = document.getElementById("winnerPopup");
+    popup.innerText = `🎉 ${name} さん 当選！ 🎉`;
+    popup.style.opacity = 1;
+
+    setTimeout(() => {
+        popup.style.opacity = 0;
+    }, 1500);
 }
 
-/* ★★★★★ 紙吹雪 ★★★★★ */
-function fireConfetti(){
-  for(let i=0;i<40;i++){
-    const c=document.createElement("div");
-    c.className="confetti";
-    c.style.left=Math.random()*100+"vw";
-    c.style.background=`hsl(${Math.random()*360},80%,60%)`;
-    c.style.transform=`rotate(${Math.random()*360}deg)`;
-    document.body.appendChild(c);
+// -----------------------------
+//  描画系
+// -----------------------------
+function drawRoulette() {
+    const cvs = document.getElementById("roulette");
+    const ctx = cvs.getContext("2d");
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-    setTimeout(()=>{ c.remove(); },2500);
-  }
+    if (members.length === 0) return;
+
+    ctx.fillStyle = "#333";
+    ctx.beginPath();
+    ctx.arc(200, 200, 180, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(members[currentIndex].split(':')[0], 200, 210);
 }
 
-/* ★★★★★ ボタン ★★★★★ */
-startBtn.addEventListener("click",startRoulette);
-stopBtn.addEventListener("click",stopRoulette);
+function drawMembersList() {
+    const list = document.getElementById("memberList");
+    list.innerHTML = "";
+    members.forEach((m, i) => {
+        const name = m.split(':')[0];
+        list.innerHTML += `<li>${name}</li>`;
+    });
+}
 
-resetBtn.addEventListener("click",()=>{
-  clearInterval(intervalId);
-  isRunning=false;
-  resultListEl.innerHTML="";
-  winnerList=[];
-  excludedFlags = excludedFlags.map(()=>false);
-  rouletteEl.textContent="待機中";
-  startBtn.disabled=false;
-  stopBtn.disabled=true;
-});
+function drawWinnersList() {
+    const list = document.getElementById("winnersList");
+    list.innerHTML = "";
+    winners.forEach((m, i) => {
+        const name = m.split(':')[0];
+        list.innerHTML += `<li>${i + 1}. ${name}</li>`;
+    });
+}
 
+// 初期表示
+drawRoulette();
 </script>
 </body>
 </html>
-
