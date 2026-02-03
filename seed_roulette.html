@@ -1,153 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>SEED 抽選ルーレット</title>
+<style>
+body {
+    background: #f0f0f0;
+    font-family: "Segoe UI", sans-serif;
+    text-align: center;
+}
+#container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+#left {
+    width: 60%;
+}
+#right {
+    width: 25%;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    height: 500px;
+    overflow-y: auto;
+}
+#roulette {
+    background: #333;
+    border-radius: 50%;
+    margin-bottom: 20px;
+}
+button {
+    padding: 12px 25px;
+    font-size: 18px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background: #1976d2;
+    color: #fff;
+}
+button:hover {
+    background: #125ea5;
+}
+
+#memberArea {
+    margin: 10px;
+}
+textarea {
+    width: 90%;
+    height: 80px;
+}
+
+#winnerPopup {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 40px;
+    background: #fff;
+    padding: 30px 50px;
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: 0.4s;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+#nextBtn {
+    display: none;
+    margin-top: 15px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>SEED 抽選ルーレット</h1>
+
+当選人数：
+<input id="winnersCount" type="number" value="1" min="1" style="width:80px; font-size:20px;">
+<br><br>
+
+<div id="memberArea">
+    <h3>メンバー追加</h3>
+    <textarea id="memberInput" placeholder="メンバー名を改行で入力"></textarea><br>
+    <button onclick="addMembers()">追加</button>
+</div>
+
+<div id="container">
+    <div id="left">
+        <canvas id="roulette" width="400" height="400"></canvas>
+        <button id="startBtn" onclick="startDraw()">START</button>
+        <button id="nextBtn" onclick="nextDraw()">次へ</button>
+    </div>
+
+    <div id="right">
+        <h3>当選者一覧</h3>
+        <ul id="winnerList"></ul>
+    </div>
+</div>
+
+<div id="winnerPopup"></div>
+
 <script>
-// -----------------------------
-//  紙吹雪エフェクト
-// -----------------------------
-function createConfetti() {
-    const confettiContainer = document.createElement('div');
-    confettiContainer.style.position = "fixed";
-    confettiContainer.style.top = "0";
-    confettiContainer.style.left = "0";
-    confettiContainer.style.width = "100%";
-    confettiContainer.style.height = "100%";
-    confettiContainer.style.pointerEvents = "none";
-    confettiContainer.style.overflow = "hidden";
-    document.body.appendChild(confettiContainer);
+// ---------------------------
+//  メンバー管理
+// ---------------------------
+let members = [];
+let winners = [];
 
-    for (let i = 0; i < 100; i++) {
-        const confetti = document.createElement("div");
-        confetti.style.position = "absolute";
-        confetti.style.width = "8px";
-        confetti.style.height = "8px";
-        confetti.style.backgroundColor = randomColor();
-        confetti.style.top = "-10px";
-        confetti.style.left = Math.random() * 100 + "%";
-        confetti.style.opacity = Math.random() + "";
-        confetti.style.transform = "rotate(" + Math.random() * 360 + "deg)";
-        confettiContainer.appendChild(confetti);
-
-        const fallDuration = 2000 + Math.random() * 3000;
-        const horizontalMove = (Math.random() - 0.5) * 200;
-
-        confetti.animate([
-            { transform: "translate(0, 0) rotate(0deg)" },
-            { transform: `translate(${horizontalMove}px, 100vh) rotate(720deg)` }
-        ], {
-            duration: fallDuration,
-            easing: "ease-out",
-            iterations: 1
-        });
-    }
-
-    setTimeout(() => confettiContainer.remove(), 5000);
+function addMembers() {
+    const lines = document.getElementById("memberInput").value.split("\n");
+    lines.forEach(name => {
+        name = name.trim();
+        if (name) members.push(name);
+    });
+    document.getElementById("memberInput").value = "";
+    drawRoulette();
 }
 
-function randomColor() {
-    const colors = ["#FF5733", "#FFC300", "#DAF7A6", "#33FFBD", "#3380FF", "#BD33FF"];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-// -----------------------------
-//  BGM
-// -----------------------------
-let bgmStart = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-game-level-start-2050.mp3");
-let bgmWin   = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3");
-
-// -----------------------------
-//  ルーレット回転
-// -----------------------------
+// ---------------------------
+//  描画
+// ---------------------------
 let currentIndex = 0;
-let rouletteTimer = null;
+let timer = null;
 
-function startRoulette() {
+function drawRoulette() {
+    const cvs = document.getElementById("roulette");
+    const ctx = cvs.getContext("2d");
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+
     if (members.length === 0) return;
 
-    if (!rouletteTimer) {
-        rouletteTimer = setInterval(() => {
-            currentIndex = (currentIndex + 1) % members.length;
-            drawRoulette();
-        }, 80);
+    ctx.fillStyle = "#333";
+    ctx.beginPath();
+    ctx.arc(200,200,180,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.font = "28px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(members[currentIndex], 200,210);
+}
+
+// ---------------------------
+//  START → 回転
+// ---------------------------
+let targetCount = 1;
+let finishedCount = 0;
+
+function startDraw() {
+    if (members.length === 0) {
+        alert("メンバーがいません");
+        return;
     }
-}
 
-function stopRoulette() {
-    clearInterval(rouletteTimer);
-    rouletteTimer = null;
-}
-
-// -----------------------------
-//  ルーレット開始ボタン
-// -----------------------------
-let targetWinnersCount = 1;
-let finishedWinners = 0;
-let drawing = false;
-
-document.getElementById("start").onclick = () => {
-    if (drawing) return; // 多重実行防止
-    targetWinnersCount = parseInt(document.getElementById("winnersCount").value);
-
-    if (targetWinnersCount <= 0) {
+    targetCount = parseInt(document.getElementById("winnersCount").value);
+    if (targetCount <= 0) {
         alert("当選人数を正しく入力してください");
         return;
     }
 
-    finishedWinners = 0;
     winners = [];
-    drawWinnersList();
-    runNextDraw();
-};
+    finishedCount = 0;
+    document.getElementById("winnerList").innerHTML = "";
 
-// -----------------------------
-//  自動で次を実行（方式：②A）
-// -----------------------------
-function runNextDraw() {
-    if (members.length === 0) {
-        alert("メンバーが全員当選しました！");
-        drawing = false;
-        return;
-    }
-
-    if (finishedWinners >= targetWinnersCount) {
-        drawing = false;
-        return;
-    }
-
-    drawing = true;
-    bgmStart.play();
-    startRoulette();
-
-    // ランダムな時間で徐々に停止
-    const spinTime = 1500 + Math.random() * 2000;
-    setTimeout(() => {
-        stopRoulette();
-
-        // 当選者を決定（ルーレット位置にいる人）
-        const winner = members[currentIndex];
-        winners.push(winner);
-        finishedWinners++;
-
-        showWinnerPopup(winner);
-
-        // メンバーから除外（重複なし）
-        members.splice(currentIndex, 1);
-
-        drawMembersList();
-        drawRoulette();
-        drawWinnersList();
-
-        bgmWin.play();
-        createConfetti();
-
-        // 1秒後に次の抽選へ（②A）
-        setTimeout(() => {
-            runNextDraw();
-        }, 1000);
-
-    }, spinTime);
+    runRoulette();
 }
 
-// -----------------------------
-//  当選者ポップアップ（①B）
-// -----------------------------
+function runRoulette() {
+    document.getElementById("startBtn").style.display = "none";
+    document.getElementById("nextBtn").style.display = "none";
+
+    timer = setInterval(() => {
+        currentIndex = (currentIndex + 1) % members.length;
+        drawRoulette();
+    }, 70);
+
+    const stopTime = 1500 + Math.random()*1500;
+    setTimeout(stopRoulette, stopTime);
+}
+
+// ---------------------------
+//  STOP → 当選処理
+// ---------------------------
+function stopRoulette() {
+    clearInterval(timer);
+
+    const winner = members[currentIndex];
+    winners.push(winner);
+    finishedCount++;
+
+    showWinnerPopup(winner);
+
+    members.splice(currentIndex,1); // 重複を避ける
+
+    document.getElementById("winnerList").innerHTML += `<li>${winner}</li>`;
+
+    drawRoulette();
+
+    // 「次へ」ボタンを表示（②B）
+    if (finishedCount < targetCount) {
+        document.getElementById("nextBtn").style.display = "inline-block";
+    } else {
+        document.getElementById("startBtn").style.display = "inline-block";
+    }
+}
+
+// ---------------------------
+//  次へ（②B）
+// ---------------------------
+function nextDraw() {
+    if (members.length === 0) {
+        alert("全員当選しました");
+        return;
+    }
+    document.getElementById("nextBtn").style.display = "none";
+    runRoulette();
+}
+
+// ---------------------------
+//  当選ポップアップ（①B）
+// ---------------------------
 function showWinnerPopup(name) {
     const popup = document.getElementById("winnerPopup");
     popup.innerText = `🎉 ${name} さん 当選！ 🎉`;
@@ -158,47 +234,8 @@ function showWinnerPopup(name) {
     }, 1500);
 }
 
-// -----------------------------
-//  描画系
-// -----------------------------
-function drawRoulette() {
-    const cvs = document.getElementById("roulette");
-    const ctx = cvs.getContext("2d");
-    ctx.clearRect(0, 0, cvs.width, cvs.height);
-
-    if (members.length === 0) return;
-
-    ctx.fillStyle = "#333";
-    ctx.beginPath();
-    ctx.arc(200, 200, 180, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(members[currentIndex].split(':')[0], 200, 210);
-}
-
-function drawMembersList() {
-    const list = document.getElementById("memberList");
-    list.innerHTML = "";
-    members.forEach((m, i) => {
-        const name = m.split(':')[0];
-        list.innerHTML += `<li>${name}</li>`;
-    });
-}
-
-function drawWinnersList() {
-    const list = document.getElementById("winnersList");
-    list.innerHTML = "";
-    winners.forEach((m, i) => {
-        const name = m.split(':')[0];
-        list.innerHTML += `<li>${i + 1}. ${name}</li>`;
-    });
-}
-
-// 初期表示
 drawRoulette();
 </script>
 </body>
 </html>
+
